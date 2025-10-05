@@ -2,32 +2,69 @@
 
 services:
   gitlab:
-    image: gitlab/gitlab-ce:latest
+    image: gitlab/gitlab-ce:17.11.0-ce.0
     container_name: gitlab
-    environment:
-      GITLAB_OMNIBUS_CONFIG: |
-        gitlab_rails['gitlab_shell_ssh_port'] = 2222
+    hostname: gitlab
+    shm_size: '256m'
+    volumes:
+      - 'config:/etc/gitlab'
+      - 'data:/var/opt/gitlab'
+      - '/var/log/gitlab'
+    networks:
+      - gitlab-network
     ports:
       - '80:80'
-      - '2222:22'
-    volumes:
-      - 'data:/var/opt/gitlab'
-      - 'config:/etc/gitlab'
-      - '/var/log/gitlab'
+      - '2222:2222'
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://gitlab/'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2222
+        # Add any additional GitLab configurations here
     restart: unless-stopped
-  runner:
-    image: gitlab/gitlab-runner
-    container_name: gitlab-runner
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/-/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  runner-1:
+    image: gitlab/gitlab-runner:v17.11.0
+    container_name: gitlab-runner-1
     volumes:
       - '/var/run/docker.sock:/var/run/docker.sock'
-      - 'runner:/etc/gitlab-runner'
-      - 'config:/etc/gitlab'
+      - 'runner-1:/etc/gitlab-runner'
+    networks:
+      - gitlab-network
+    depends_on:
+      gitlab:
+        condition: service_healthy
     restart: unless-stopped
+  
+  runner-2:
+    image: gitlab/gitlab-runner:v17.11.0
+    container_name: gitlab-runner-2
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+      - 'runner-2:/etc/gitlab-runner'
+    networks:
+      - gitlab-network
+    depends_on:
+      gitlab:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  gitlab-network:
+    name: gitlab-network
+    driver: bridge
 
 volumes:
   config:
-    driver: local
+    name: gitlab-config
   data:
-    driver: local
-  runner:
-    driver: local
+    name: gitlab-data
+  runner-1:
+    name: gitlab-runner-1
+  runner-2:
+    name: gitlab-runner-2
