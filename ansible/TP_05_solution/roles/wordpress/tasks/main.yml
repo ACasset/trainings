@@ -1,0 +1,58 @@
+---
+
+- name: Installation des paquets nécessaires
+  become: true
+  ansible.builtin.package:
+    name:
+      - php-mysqli
+      - tar
+      - python3-libsemanage
+    state: present
+
+- name: Création du dossier pour WordPress
+  become: true
+  ansible.builtin.file:
+    path: "/var/www/{{ nom_dossier_wordpress }}"
+    state: directory
+    owner: "{{ ansible_user}}"
+    group: "{{ ansible_user }}"
+
+- name: Téléchargement et décompression de WordPress
+  ansible.builtin.unarchive:
+    src: https://wordpress.org/latest.tar.gz
+    dest: "/var/www/{{ nom_dossier_wordpress }}"
+    remote_src: true
+    creates: "/var/www/{{ nom_dossier_wordpress }}/.initialized"
+
+- name: Récupération des salts WordPress
+  ansible.builtin.uri:
+    url: https://api.wordpress.org/secret-key/1.1/salt/
+    return_content: true
+  register: __wordpress_salts
+
+- name: Copie du fichier de configuration WordPress
+  ansible.builtin.template:
+    src: wp-config.php.j2
+    dest: "/var/www/{{ nom_dossier_wordpress }}/wordpress/wp-config.php"
+    mode: '0644'
+
+- name: Copie du fichier de configuration nginx
+  become: true
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/conf.d/wordpress.conf
+    mode: '0644'
+
+- name: Redémarrage de nginx
+  become: true
+  ansible.builtin.service:
+    name: nginx
+    state: restarted
+    enabled: true
+
+- name: Autoriser nginx à se connecter à la base de données
+  become: true
+  ansible.posix.seboolean:
+    name: httpd_can_network_connect
+    state: true
+    persistent: true

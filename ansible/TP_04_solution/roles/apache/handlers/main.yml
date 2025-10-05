@@ -1,0 +1,7 @@
+---
+
+- name: Redémarrer Apache
+  become: true
+  ansible.builtin.service:
+    name: "{{ __apache_service }}"
+    state: "{{ apache_restart_state }}"

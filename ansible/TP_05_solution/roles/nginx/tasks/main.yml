@@ -1,0 +1,16 @@
+---
+
+- name: Installation des paquets nécessaires
+  become: true
+  ansible.builtin.package:
+    name:
+      - nginx
+    state: present
+
+- name: Ouverture du port HTTP sur le firewall
+  become: true
+  ansible.posix.firewalld:
+    service: http
+    permanent: true
+    state: enabled
+    immediate: true

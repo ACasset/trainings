@@ -1,0 +1,71 @@
+---
+
+- name: Installation de PostgreSQL et de la librairie psycopg2
+  become: true
+  ansible.builtin.package:
+    name:
+      - postgresql-server
+      - python3-psycopg2
+    state: present
+
+- name: Initialisation de PostgreSQL
+  become: true
+  become_user: postgres
+  ansible.builtin.command:
+    cmd: initdb --pgdata /var/lib/pgsql/data
+    creates: /var/lib/pgsql/data/PG_VERSION
+
+- name: Configuration de PostgreSQL
+  become: true
+  ansible.builtin.lineinfile:
+    path: "{{ postgresql_configuration_file }}"
+    regexp: "^[# ]*{{ item.key }} *="
+    line: "{{ item.key}} = '{{ item.value }}'"
+  loop: "{{ postgresql_configuration | dict2items }}"
+  notify: Redémarrage de PostgreSQL
+
+- name: Copie du fichier pg_hba.conf
+  become: true
+  ansible.builtin.template:
+    src: pg_hba.conf.j2
+    dest: "{{ postgresql_hba_file }}"
+    owner: postgres
+    group: postgres
+  notify: Redémarrage de PostgreSQL
+
+- name: Lancement du service PostgreSQL
+  become: true
+  ansible.builtin.service:
+    name: postgresql
+    state: started
+    enabled: true
+
+- name: Ouverture du port PostgreSQL sur le firewall
+  become: true
+  ansible.posix.firewalld:
+    service: postgresql
+    permanent: true
+    state: enabled
+    immediate: true
+
+- name: Création d'un utilisateur et/ou d'une base de données
+  when: postgresql_initialisation | bool
+  block:
+    - name: Création d'un utilisateur PostgreSQL
+      community.postgresql.postgresql_user:
+        name: "{{ postgresql_user }}"
+        password: "{{ postgresql_password }}"
+        state: present
+      when:
+        - postgresql_user | length > 0
+        - postgresql_password | length > 0
+      register: __postgresql_user_created
+
+    - name: Création d'une base de données PostgreSQL
+      community.postgresql.postgresql_db:
+        name: "{{ postgresql_database }}"
+        owner: "{{ postgresql_user }}"
+        state: present
+      when:
+        - postgresql_database | length > 0
+        - __postgresql_user_created.skipped is not defined

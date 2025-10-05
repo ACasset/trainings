@@ -1,0 +1,37 @@
+---
+
+- name: Installation des paquets nécessaires
+  become: true
+  ansible.builtin.package:
+    name:
+      - mysql-server
+      - python3-PyMySQL
+    state: present
+
+- name: Démarrage de la base de données
+  become: true
+  ansible.builtin.service:
+    name: mysqld
+    state: started
+    enabled: true
+
+- name: Création d'une base de données dédiée sur le serveur MySQL
+  become: true
+  community.mysql.mysql_db:
+    name: "{{ nom_bdd }}"
+
+- name: Création d'un utilisateur dédié sur le serveur MySQL
+  become: true
+  community.mysql.mysql_user:
+    name: "{{ utilisateur_bdd }}"
+    host: "{{ hostvars[groups.frontend[0]].ansible_host }}"
+    password: "{{ mot_de_passe_bdd }}"
+    priv: "{{ nom_bdd }}.*:ALL"
+
+- name: Ouverture du port MySQL sur le firewall
+  become: true
+  ansible.posix.firewalld:
+    service: mysql
+    permanent: true
+    state: enabled
+    immediate: true

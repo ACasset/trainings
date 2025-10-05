@@ -1,0 +1,61 @@
+---
+
+- name: Configuration d'Apache
+  ansible.builtin.lineinfile:
+    dest: "{{ __apache_server_root }}/ports.conf"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+    mode: 0644
+  loop: "{{ __apache_ports_configuration_items }}"
+  notify: Redémarrer Apache
+
+- name: Activation des mods Apache
+  ansible.builtin.file:
+    src: "{{ __apache_server_root }}/mods-available/{{ item }}.load"
+    dest: "{{ __apache_server_root }}/mods-enabled/{{ item }}.load"
+    state: link
+    mode: 0644
+  loop: "{{ apache_mods_enabled }}"
+  notify: Redémarrer Apache
+
+- name: Désactivation des mods Apache
+  ansible.builtin.file:
+    path: "{{ __apache_server_root }}/mods-enabled/{{ item }}.load"
+    state: absent
+  loop: "{{ apache_mods_disabled }}"
+  notify: Redémarrer Apache
+
+- name: Vérification de l'existence des certificats
+  ansible.builtin.stat:
+    path: "{{ item.certificate_file }}"
+  register: __apache_ssl_certificates
+  loop: "{{ apache_vhosts_ssl }}"
+  no_log: "{{ apache_ssl_no_log }}"
+
+- name: Ajout de la configuration des vhosts
+  ansible.builtin.template:
+    src: "{{ apache_vhosts_template }}"
+    dest: "{{ __apache_conf_path }}/sites-available/{{ apache_vhosts_filename }}"
+    owner: root
+    group: root
+    mode: 0644
+  notify: Redémarrer Apache
+  when: apache_create_vhosts | bool
+
+- name: Ajout d'un lien symbolique pour les vhosts dans sites-enabled
+  ansible.builtin.file:
+    src: "{{ __apache_conf_path }}/sites-available/{{ apache_vhosts_filename }}"
+    dest: "{{ __apache_conf_path }}/sites-enabled/{{ apache_vhosts_filename }}"
+    state: link
+    mode: 0644
+    force: "{{ ansible_check_mode }}"
+  notify: Redémarrer Apache
+  when: apache_create_vhosts | bool
+
+- name: Suppression du vhost par défaut dans sites-enabled
+  ansible.builtin.file:
+    path: "{{ __apache_conf_path }}/sites-enabled/{{ __apache_default_vhost_filename }}"
+    state: absent
+  notify: Redémarrer Apache
+  when: apache_remove_default_vhost

@@ -1,0 +1,14 @@
+---
+
+# Configuration à appliquer à PostgreSQL
+postgresql_configuration:
+  listen_addresses: "*"
+  password_encryption: "scram-sha-256"
+
+# Création d'éléments à l'initialisation de PostgreSQL
+# Pour créer un utilisateur, renseignez 'postgresql_user' et 'postgresql_password'
+# Pour créer une base de données, créez un utilisateur et renseignez 'postgresql_database'
+postgresql_initialisation: true
+postgresql_user: test_user
+postgresql_password: test_password
+postgresql_database: test_db

@@ -1,0 +1,34 @@
+---
+
+- name: Playbook de démonstration
+  hosts: all
+  tasks:
+    - name: Création de l'utilisateur
+      become: true
+      ansible.builtin.user:
+        name: "{{ nom_utilisateur }}"
+        password: "{{ mot_de_passe_utilisateur | password_hash('sha512', 'SecretStaticSalt') }}"
+
+    - name: Copie du fichier d'aliases bash
+      become: true
+      ansible.builtin.copy:
+        src: .bash_aliases
+        dest: /home/{{ nom_utilisateur }}/.bash_aliases
+        owner: "{{ nom_utilisateur }}"
+        group: "{{ nom_utilisateur }}"
+        mode: 0644
+
+    - name: Import du fichier d'aliases bash au login
+      become: true
+      ansible.builtin.blockinfile:
+        path: /home/{{ nom_utilisateur }}/.bashrc
+        block: |
+          if [ -f ~/.bash_aliases ]; then
+            . ~/.bash_aliases
+          fi
+
+    - name: Installation de netstat
+      become: true
+      ansible.builtin.package:
+        name: net-tools
+        state: present

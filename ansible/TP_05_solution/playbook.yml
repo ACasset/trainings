@@ -1,0 +1,13 @@
+---
+
+- name: Actions sur la machine backend
+  hosts: backend
+  roles:
+    - mysql
+
+- name: Actions sur la machine frontend
+  hosts: frontend
+  roles:
+    - php
+    - nginx
+    - wordpress

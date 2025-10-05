@@ -1,0 +1,9 @@
+---
+
+- name: Installation des paquets nécessaires
+  become: true
+  ansible.builtin.package:
+    name:
+      - php
+      - php-mysqli
+    state: present

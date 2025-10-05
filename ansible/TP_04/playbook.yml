@@ -1,0 +1,8 @@
+---
+
+- name: Installation d'Apache sur le frontend
+  hosts: frontend
+  vars_files:
+    - vars/main.yml
+  roles:
+    - apache

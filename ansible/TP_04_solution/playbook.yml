@@ -1,0 +1,38 @@
+---
+
+- name: Installation de PostgreSQL sur le backend
+  hosts: backend
+  roles:
+    - postgresql
+
+- name: Installation d'Apache sur le frontend et test de contact PostgreSQL
+  hosts: frontend
+  vars_files:
+    - vars/main.yml
+  roles:
+    - apache
+  tasks:
+    - name: Installation de la librairie psycopg2
+      become: true
+      ansible.builtin.package:
+        name: python3-psycopg2
+        state: present
+      register: __installation_psycopg2
+
+    - name: Connexion à la base de données
+      community.postgresql.postgresql_info:
+        login_host: "{{ hostvars[groups['backend'][0]]['ansible_host'] | default(groups['backend'][0]) }}"
+        login_user: "{{ nom_utilisateur_postgresql }}"
+        login_password: "{{ mot_de_passe_utilisateur_postgresql }}"
+        db: "{{ nom_base_de_donnees_postgresql }}"
+    
+    # C'est un choix ici que de supprimer la librairie psycopg2 pour nettoyer la machine
+    # Notez la condition qui ne s'active que si c'est au cours de ce playbook que psycopg2 a été installé
+    # Ainsi, si la librairie psycopg2 a été installée en dehors de ce playbook, elle ne sera pas supprimée
+    # La contrepartie de ce nettoyage est que cette partie du playbook pourrait ne jamais être idempotente
+    - name: Suppression de la librairie psycopg2
+      become: true
+      ansible.builtin.package:
+        name: python3-psycopg2
+        state: absent
+      when: __installation_psycopg2.changed

@@ -1,0 +1,39 @@
+# PostgreSQL Client Authentication Configuration File
+# ===================================================
+# Refer to the "Client Authentication" section in the PostgreSQL
+# documentation for a complete description of this file.
+
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+
+# "local" is for Unix domain socket connections only
+local   all             all                                     trust
+
+# IPv4 local connections:
+host    all             all             127.0.0.1/32            md5
+
+# IPv6 local connections:
+host    all             all             ::1/128                 md5
+
+# Allow replication connections from localhost, by a user with the
+# replication privilege.
+local   replication     all                                     trust
+host    replication     all             127.0.0.1/32            md5
+host    replication     all             ::1/128                 md5
+
+# Allow connections from frontend
+host    all    {{ nom_utilisateur_postgresql }}    {{ hostvars[groups['frontend'][0]]['ansible_host'] | default(groups['frontend'][0]) }}/32    scram-sha-256
+
+{# Ceci est un commentaire en Jinja2, il n'apparaîtra pas dans le fichier qui sera copié sur la machine distante #}
+
+{% if groups is defined %}
+# Il est également possible de placer des conditions dans un template, pour s'adapter à un usage spécifique
+# Cette conditionnelle vérifie si la variable 'groups' est définie (ce qui est toujours le cas pour Ansible)
+# Il existe des conditions plus classiques, comme : if variable == 'valeur'
+# Vous pouvez consulter la liste des structures de contrôle dans la documentation officielle : https://jinja.palletsprojects.com/en/stable/templates/#list-of-control-structures
+{% endif %}
+
+{#-
+Une chose qui peut également être importante est la gestion des retours à la ligne
+Le symbole - permet de supprimer ceux-ci pour avoir un fichier finale plus propre
+Vous pouvez en apprendre plus dans la documentation officielle : https://jinja.palletsprojects.com/en/stable/templates/#whitespace-control
+-#}

@@ -1,0 +1,11 @@
+---
+
+- name: Mise à jour du cache d'apt
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Gestion du paquet Apache
+  ansible.builtin.apt:
+    name: "{{ apache_packages }}"
+    state: "{{ apache_packages_state }}"

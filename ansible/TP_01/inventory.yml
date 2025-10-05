@@ -1,0 +1,28 @@
+---
+
+# Le nom du groupe
+# La valeur 'all' est une valeur spéciale d'Ansible, qui va regrouper l'ensemble des hôtes
+# On verra dans le prochain TP comment mieux segmenter son inventaire
+all:
+  # L'instruction pour indiquer qu'on va recenser les hôtes (= serveurs distants) du groupe
+  hosts:
+    # Un premier hôte, qu'on identifie par son FQDN
+    # /!\ La machine qui va exécuter Ansible (= le contrôleur) doit pouvoir résoudre ce FQDN (soit via un serveur DNS, soit via une entrée dans son fichier '/etc/hosts')
+    serveur.corp.thales:
+      # Le nom de l'utilisateur qu'Ansible utilisera pour se connecter à ce serveur
+      ansible_user: admin
+
+    # Un second hôte, qu'on identifie par son IP
+    192.168.1.10:
+      ansible_user: almalinux
+
+    # Un troisième hôte, qu'on identifie par un nom fonctionnel
+    # /!\ Ce nom fonctionnel n'est pas un FQDN, il n'a donc pas à être résolvable par un serveur DNS
+    # Evitez tout de même d'utiliser des caractères spéciaux
+    NOM_DU_SERVEUR:
+      # Comme on utilise un nom fonctionnel, on doit renseigner la variable spéciale 'ansible_host'
+      # Cette variable indique le nom technique (IP ou FQDN) pour contacter le serveur
+      ansible_host: 192.168.1.12
+      ansible_user: user
+
+# Pour plus d'informations sur la construction des inventaires, se référer à la documentation officielle : https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html

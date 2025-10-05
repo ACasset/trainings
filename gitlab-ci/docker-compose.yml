@@ -1,0 +1,33 @@
+---
+
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:latest
+    container_name: gitlab
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        gitlab_rails['gitlab_shell_ssh_port'] = 2222
+    ports:
+      - '80:80'
+      - '2222:22'
+    volumes:
+      - 'data:/var/opt/gitlab'
+      - 'config:/etc/gitlab'
+      - '/var/log/gitlab'
+    restart: unless-stopped
+  runner:
+    image: gitlab/gitlab-runner
+    container_name: gitlab-runner
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+      - 'runner:/etc/gitlab-runner'
+      - 'config:/etc/gitlab'
+    restart: unless-stopped
+
+volumes:
+  config:
+    driver: local
+  data:
+    driver: local
+  runner:
+    driver: local

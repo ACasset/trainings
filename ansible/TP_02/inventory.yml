@@ -1,0 +1,33 @@
+---
+
+all:
+  # Des variables qui vont s'appliquer à l'ensemble du groupe
+  vars:
+    # On peut supposer que le nom d'utilisateur SSH est commun à toutes les machines, on le met donc dans la partie 'vars'
+    # Si ce n'est pas le cas, on peut le déplacer dans les sous-groupes
+    ansible_user: À_COMPLÉTER
+  # Pour structurer un inventaire, on peut définir des sous-groupes avec le mot-clé 'children'
+  children:
+    # Le nom du sous-groupe
+    frontend:
+      # Des variables qui vont s'appliquer à l'ensemble du sous-groupe 'frontend'
+      # Dans notre cas, cela a peu d'importance, car nous avons une seule machine dans le groupe
+      # Mais dans le cas de déploiements plus complexe, cela permet de définir des variables communes à un groupe fonctionnel
+      vars:
+        nom_utilisateur: utilisateur-frontend
+      hosts:
+        # Un serveur dans le sous-groupe 'frontend'
+        FQDN_OU_IP_DU_SERVEUR_FRONTEND:
+          # Les variables qui sont définies ici ne seront utilisées que par l'hôte 'serveur_frontend'
+          ansible_become_password: À_COMPLÉTER
+          mot_de_passe_utilisateur: À_COMPLÉTER
+    backend:
+      # Des variables qui vont s'appliquer à l'ensemble du sous-groupe 'backend'
+      vars:
+        nom_utilisateur: utilisateur-backend
+      hosts:
+        # Un serveur dans le sous-groupe 'backend'
+        FQDN_OU_IP_DU_SERVEUR_BACKEND:
+          # Les variables qui sont définies ici ne seront utilisées que par l'hôte 'serveur_backend'
+          ansible_become_password: À_COMPLÉTER
+          mot_de_passe_utilisateur: À_COMPLÉTER

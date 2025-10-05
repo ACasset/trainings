@@ -1,0 +1,129 @@
+---
+
+- name: Playbook pour le backend
+  hosts: backend
+  tasks:
+    - name: Installation de PostgreSQL et de la librairie psycopg2
+      become: true
+      ansible.builtin.package:
+        name:
+          - postgresql-server
+          - python3-psycopg2
+        state: present
+      tags:
+        - always
+
+    - name: Vérification de l'initialisation de PostgreSQL
+      become: true
+      ansible.builtin.stat:
+        path: /var/lib/pgsql/data/PG_VERSION
+      register: initialisation_postgresql
+      tags:
+        - always
+    
+    - name: Affichage de la variable dossier_postgresql
+      ansible.builtin.debug:
+        var: initialisation_postgresql
+      tags:
+        - always
+
+    - name: Initialisation de PostgreSQL
+      become: true
+      become_user: postgres
+      ansible.builtin.command:
+        cmd: initdb --pgdata /var/lib/pgsql/data
+      when: initialisation_postgresql.stat.exists == false
+      tags:
+        - always
+
+    - name: Configuration de PostgreSQL pour écouter sur toutes les interfaces
+      become: true
+      ansible.builtin.lineinfile:
+        path: /var/lib/pgsql/data/postgresql.conf
+        regexp: '^[# ]*listen_addresses *='
+        line: listen_addresses = '*'
+      notify: Redémarrage de PostgreSQL
+      tags:
+        - always
+
+    - name: Configuration de PostgreSQL pour utiliser SCRAM-SHA-256 avec les mots de passe
+      become: true
+      ansible.builtin.lineinfile:
+        path: /var/lib/pgsql/data/postgresql.conf
+        regexp: '^[# ]*password_encryption *='
+        line: password_encryption = 'scram-sha-256'
+      notify: Redémarrage de PostgreSQL
+      tags:
+        - never
+        - securite
+
+    - name: Copie du fichier pg_hba.conf
+      become: true
+      ansible.builtin.template:
+        src: pg_hba.conf.j2
+        dest: /var/lib/pgsql/data/pg_hba.conf
+        owner: postgres
+        group: postgres
+      notify: Redémarrage de PostgreSQL
+      tags:
+        - always
+
+    - name: Lancement du service PostgreSQL
+      become: true
+      ansible.builtin.service:
+        name: postgresql
+        state: started
+      tags:
+        - always
+
+    - name: Création d'un utilisateur PostgreSQL
+      community.postgresql.postgresql_user:
+        name: "{{ nom_utilisateur_postgresql }}"
+        password: "{{ mot_de_passe_utilisateur_postgresql }}"
+        state: present
+      tags:
+        - always
+
+    - name: Création d'une base de données PostgreSQL
+      community.postgresql.postgresql_db:
+        name: "{{ nom_base_de_donnees_postgresql }}"
+        owner: "{{ nom_utilisateur_postgresql }}"
+        state: present
+      tags:
+        - always
+
+    - name: Ouverture du port PostgreSQL sur le firewall
+      become: true
+      ansible.posix.firewalld:
+        service: postgresql
+        state: enabled
+        immediate: true
+      tags:
+        - always
+
+  handlers:
+    - name: Redémarrage de PostgreSQL
+      become: true
+      ansible.builtin.systemd:
+        name: postgresql
+        state: restarted
+
+- name: Play pour le frontend
+  hosts: frontend
+  tasks:
+    - name: Installation de la librairie psycopg2
+      become: true
+      ansible.builtin.package:
+        name: python3-psycopg2
+        state: present
+      tags:
+        - always
+
+    - name: Connexion à la base de données
+      community.postgresql.postgresql_info:
+        login_host: "{{ hostvars[groups['backend'][0]]['ansible_host'] | default(groups['backend'][0]) }}"
+        login_user: "{{ nom_utilisateur_postgresql }}"
+        login_password: "{{ mot_de_passe_utilisateur_postgresql }}"
+        db: "{{ nom_base_de_donnees_postgresql }}"
+      tags:
+        - always

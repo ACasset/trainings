@@ -1,0 +1,61 @@
+---
+
+# Notez le tiret en début de ligne, qui indique un élément de liste en YAML
+# Un playbook peut être composé de multiples plays, le niveau racine est donc une liste de plays, d'où ce tiret
+# On peut éventuellement donner un nom ('name') pour identifier le play, celui-ci sera affiché lors de l'exécution, mais il n'a aucune incidence fonctionnelle
+- name: Play de démonstration
+  # Le mot-clé 'hosts' indique sur quel groupe ou quelles machines de l'inventaire on va tenter d'effectuer les actions
+  # Pour plus d'informations sur les possibilités du mot-clé 'hosts', se référer à la documentation officielle : https://docs.ansible.com/ansible/latest/inventory_guide/intro_patterns.html
+  # Dans notre cas, on veut que le play se lance sur l'ensemble des hôtes de façon indifférenciée
+  hosts: all
+  # Le mot-clé 'tasks' indique qu'on va lister séquentiellement les différentes actions à effectuer sur les hôtes
+  tasks:
+    # Comme pour la déclaration du play, on peut indiquer un nom pour aider à identifier la task (aussi bien dans l'éditeur de code que pendant l'exécution)
+    # De plus, là aussi, chaque task doit etre un élément de liste
+    - name: Création de l'utilisateur
+      # Le mot-clé 'become' détermine l'utilisation d'une élévation de privilège pour l'action qui l'appelle
+      # La création d'un utilisateur a besoin d'une telle élévation
+      become: true
+      # On va appeler un 'module' Ansible pour effectuer notre action, à l'instar des commandes 'ad-hoc'
+      # Par souci de clarté, on va donc là aussi utiliser le FQCN (Fully Qualified Collection Name) de ce module
+      # Il s'agit d'un module natif, donc le FQCN commence par 'ansible.builtin.', et il s'intitule 'user'
+      # Ce dernier sert à créer un utilisateur sur une machine Unix
+      # Sa documentation est disponible ici : https://docs.ansible.com/ansible/latest/collections/ansible/builtin/user_module.html
+      ansible.builtin.user:
+        # On va utiliser la variable 'nom_utilisateur' qui pourra varier d'un hôte à l'autre plutôt que de renseigner un nom d'utilisateur unique en dur
+        # Une variable se déclare en entourant son nom de doubles crochets {{ }}
+        # Le caractère { étant spécial en YAML, on va entourer la valeur de guillemets "" pour indiquer à Ansible qu'il s'agit bien d'une chaîne de caractères
+        name: "{{ nom_utilisateur }}"
+        # Et, de la même façon, on va utiliser la variable 'mot_de_passe_utilisateur'
+        # Sur Linux, le module exige que le mot de passe soit hashé, on va donc utiliser ce qui s'appelle un 'filter' pour modifier la valeur de la variable
+        # Ne vous préoccupez pas de ce filtre pour l'instant, et ne modifiez pas cette ligne : nous les verrons en détails dans un prochain TP
+        password: "{{ mot_de_passe_utilisateur | password_hash('sha512', 'SecretStaticSalt') }}"
+
+    # On déclare une deuxième task dans le play
+    - name: Copie du fichier d'aliases bash
+      # La copie d'un fichier est une action banale, qui n'a pas forcément besoin d'une élévation de privilèges
+      # Mais, dans notre cas, on veut copier un fichier dans le répertoire 'home' d'un autre utilisateur, l'élévation est donc ici nécessaire
+      become: true
+      # On va appeler un autre module natif, toujours avec son FQCN, et qui s'intitule 'copy'
+      # Ce dernier sert à copier un fichier vers les hôtes
+      # Sa documentation est disponible ici : https://docs.ansible.com/ansible/latest/collections/ansible/builtin/copy_module.html
+      ansible.builtin.copy:
+        # Comme on utilise le module 'copy', Ansible ira chercher tout seul le fichier indiqué dans le répertoire 'files'
+        src: .bash_aliases
+        # On va réutiliser la variable 'nom_utilisateur' pour trouver le répertoire home de l'utilisateur fraîchement créé
+        # Notez que la variable étant au milieu de la chaîne de caractères, on a pas besoin de l'entourer de guillemets cette fois-ci
+        dest: /home/{{ nom_utilisateur }}/.bash_aliases
+
+    # On déclare une troisième task dans le play
+    - name: Import du fichier d'aliases bash au login
+      # Comme pour la copie du fichier d'aliases, on va travailler dans le répertoire 'home' d'un autre utilisateur, l'élévation est donc nécessaire
+      become: true
+      # Le module 'blockinfile' permet d'ajouter un bloc de texte dans un fichier, ici on va ajouter une ligne au fichier .bashrc pour importer les alias au login
+      # Sa documentation est disponible ici : https://docs.ansible.com/ansible/latest/collections/ansible/builtin/blockinfile_module.html
+      ansible.builtin.blockinfile:
+        path: /home/{{ nom_utilisateur }}/.bashrc
+        # Comme pour les valeurs chiffrées avec Ansible Vault, le caractère `|` sert à indiquer que la valeur de la variable s'étale sur plusieurs lignes
+        block: |
+          if [ -f ~/.bash_aliases ]; then
+            . ~/.bash_aliases
+          fi

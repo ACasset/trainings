@@ -1,0 +1,29 @@
+---
+
+dependencies: []
+
+galaxy_info:
+  role_name: apache
+  author: acasset
+  description: Apache 2.x pour Linux
+  company: "Thales Services Numériques"
+  license: "GPL-3.0"
+  min_ansible_version: 2.10
+  platforms:
+    - name: Debian
+      versions:
+        - all
+    - name: AlmaLinux
+      versions:
+        - Teal Serval
+    - name: Ubuntu
+      versions:
+        - trusty
+        - xenial
+        - bionic
+  galaxy_tags:
+    - web
+    - apache
+    - webserver
+    - html
+    - httpd

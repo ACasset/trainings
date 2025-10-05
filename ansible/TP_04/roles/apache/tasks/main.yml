@@ -1,0 +1,66 @@
+---
+
+- name: Inclusion des variables en fonction de l'OS
+  ansible.builtin.include_vars:
+    file: "{{ ansible_os_family }}.yml"
+
+- name: Définition de la liste des paquets pour Apache
+  ansible.builtin.set_fact:
+    apache_packages: "{{ __apache_packages | list }}"
+  when: apache_packages is not defined
+
+- name: Installation d'Apache
+  ansible.builtin.include_tasks:
+    file: "setup-{{ ansible_os_family }}.yml"
+    apply:
+      become: true
+
+- name: Récupération de la version d'Apache
+  ansible.builtin.command:
+    cmd: "{{ __apache_daemon_path }}{{ __apache_daemon }} -v"
+  changed_when: false
+  register: __apache_version
+
+- name: Parsing de la version d'Apache
+  ansible.builtin.set_fact:
+    __apache_version_clean: "{{ __apache_version.stdout.split()[2].split('/')[1] }}"
+
+- name: Utilisation des variables pour Apache 2.2
+  ansible.builtin.include_vars:
+    file: apache-22.yml
+  when: "__apache_version_clean.split('.')[1] == '2'"
+
+- name: Utilisation des variables pour Apache 2.4
+  ansible.builtin.include_vars:
+    file: apache-24.yml
+  when: "__apache_version_clean.split('.')[1] == '4'"
+
+- name: Configuration d'Apache
+  ansible.builtin.include_tasks:
+    file: configure-{{ ansible_os_family }}.yml
+    apply:
+      become: true
+
+- name: Copie du fichier index.html
+  become: true
+  ansible.builtin.copy:
+    src: index.html
+    dest: "{{ apache_vhosts[0].documentroot }}/{{ __apache_index_file_name }}"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Gestion du service Apache
+  become: true
+  ansible.builtin.service:
+    name: "{{ __apache_service }}"
+    state: "{{ apache_state }}"
+    enabled: "{{ apache_enabled }}"
+
+- name: Ouverture du port HTTP sur le firewall
+  become: true
+  ansible.posix.firewalld:
+    service: http
+    permanent: true
+    state: enabled
+    immediate: true

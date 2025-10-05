@@ -1,0 +1,25 @@
+---
+
+# Les mots de passe ne sont pas chiffrés dans cet exemple à des fins pédagogiques
+# Chiffrez-les toujours dans un contexte d'intégration ou de production
+
+all:
+  vars:
+    ansible_user: user
+  children:
+    frontend:
+      vars:
+        nom_utilisateur: utilisateur-frontend
+      hosts:
+        serveur_frontend:
+          ansible_host: 192.168.28.129
+          ansible_become_password: S3cur3P4ssw0rdFr0ntEnd
+          mot_de_passe_utilisateur: passwordNewUserFrontend
+    backend:
+      vars:
+        nom_utilisateur: utilisateur-backend
+      hosts:
+        serveur_backend:
+          ansible_host: 192.168.28.128
+          ansible_become_password: S3cur3P4ssw0rdB4ckEnd
+          mot_de_passe_utilisateur: passwordNewUserBackend
