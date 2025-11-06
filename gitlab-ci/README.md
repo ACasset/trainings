@@ -50,6 +50,7 @@ Chaque TP est conçu pour introduire un nombre limité de concepts afin de ne pa
 - les variables
 - les needs
 - les when
+- le allow_failure
 
 ## TP 03 : Utiliser les différentes entrées et sorties
 

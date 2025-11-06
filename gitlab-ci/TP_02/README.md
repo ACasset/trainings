@@ -9,12 +9,13 @@ Ce TP a pour but d'introduire les concepts suivants :
 - les variables
 - les needs
 - les when
+- le allow_failure
 
 ## Déroulé
 
 ### Choix d'une image Docker
 
-Lors du TP 01, nous avons utilisé le template de pipeline fourni par GitLab, qui utilise uniquement les instructions de base, et des commandes simples telles que `echo` et `sleep`, mais on peut imaginer facilement des cas de figure plus complexes, où on va vouloir par exemple compiler un programme C ou Java. Or, ces outils ne sont pas nécessairement installés dans l'image Docker utilisée par défaut.
+Lors du TP 01, nous avons utilisé le template de pipeline fourni par GitLab, qui utilise uniquement les instructions de base, et des commandes simples telles que `echo` et `sleep`, mais on peut imaginer facilement des cas de figure plus complexes, où on va vouloir par exemple compiler un programme écrit en C ou en Java. Or, ces outils ne sont pas nécessairement installés dans l'image Docker utilisée par défaut.
 
 Les jobs peuvent alors utiliser le mot-clé `image`, permettant de spécifier le nom d'une image Docker à utiliser, comme ceci :
 ```yaml
@@ -35,7 +36,7 @@ Chaque job est ainsi capable de s'exécuter dans une image différente, en solli
 - segmenter le pipeline pour que chaque besoin soit traité dans un job dédié avec une image spécifique, mais cela n'est pas toujours possible, auquel cas vous devrez...
 - construire votre propre image Docker contenant tous les binaires, et la mettre à disposition du runner GitLab CI
 
-> Il est fortement déconseillé d'installer à la volée des binaires sur les conteneurs (par exemple, inclure un `microdnf install php` dans l'instruction `script`), car cela entraînera tôt ou tard des problèmes de compatibilité entre les versions utilisées. Privilégiez plutôt l'utilisation du tag `latest` des images.
+> Il est fortement déconseillé d'installer à la volée des binaires sur les conteneurs (par exemple, inclure un `microdnf install php` dans l'instruction `script`), car cela entraînera tôt ou tard des problèmes de compatibilité entre les versions utilisées. Privilégiez plutôt l'utilisation des images dédiées avec le tag `latest`.
 
 Que vous utilisiez une image Docker tierce ou que vous construisiez la vôtre, les seules conditions sont qu'elle doit disposer de `bash` (ou de `sh`) et de `grep`.
 
@@ -51,9 +52,11 @@ get-wordpress-salts:
   stage: build
   image: curlimages/curl:8.13.0
   script:
+    # On va constituer le fichier souhaité
     - echo "<?php" > wordpress_salts.php
     - curl --silent https://api.wordpress.org/secret-key/1.1/salt/ >> wordpress_salts.php
     - echo "?>" >> wordpress_salts.php
+    # Et l'afficher pour vérifier son contenu
     - cat wordpress_salts.php
 ```
 
@@ -71,6 +74,7 @@ get-wordpress-salts:
     - cat wordpress_salts.php
   artifacts:
     paths:
+      # On a jamais changé de dossier, donc pas besoin de préciser de chemin
       - wordpress_salts.php
 ```
 
@@ -96,7 +100,7 @@ Imaginons maintenant que vous ayez une application un peu plus complexe à dispo
 
 GitLab CI propose pour cet usage le mot-clé `services`. Ce dernier permet de créer un conteneur exécuté en parallèle du job, pour, par exemple, peupler une base de données PostgreSQL et faire une série de tests unitaires.
 
-> Attention, comme les services sont exécutés en parallèle, ils sont accessibles par les protocoles réseau standards, mais pas via l'instruction `script` des jobs.
+> Attention, comme les services sont exécutés dans des conteneurs distincts, ils sont accessibles par les protocoles réseau standards, mais pas via l'instruction `script` des jobs.
 
 Pour vous en servir, ajoutez la liste des images que vous souhaitez au job comme suit :
 ```yaml
@@ -129,12 +133,13 @@ try-database-connection:
 
 Nous avons ici placé la clé `variables` au sein du job, donc seul ce job pourra utiliser cette variable. Cela fait sens dans notre cas de figure : le service est déclaré dans le job, donc seul ce dernier y aura accès.
 
-> Les services sont réinitialisés pour chaque job : il n'est ainsi pas possible d'avoir un premier job qui initialise un service, et un autre qui va simplement l'utiliser.
+> Les services sont réinitialisés pour chaque job : il n'est ainsi pas possible d'avoir un premier job qui initialise un service, et un autre qui va simplement l'utiliser. 
 
-Si on imagine que plusieurs jobs vont utiliser le même service, ou les mêmes variables, on peut placer les mots-clés correspondants à la racine du fichier `.gitlab-ci.yml` comme suit :
+Si on imagine que plusieurs jobs vont utiliser le même service, ou les mêmes variables, on peut déplacer les mots-clés correspondants dans la clé `default` à la racine du fichier `.gitlab-ci.yml` comme suit :
 ```yaml
-services:
-  - postgres:16.8-alpine3.20
+default:
+  services:
+    - postgres:16.8-alpine3.20
 
 variables:
   POSTGRES_PASSWORD: "V3ryS3cur3P@ssw0rd!"
@@ -149,6 +154,10 @@ try-database-connection:
 ```
 
 > Dans notre cas, cela signifie que tous les jobs vont lancer un service postgres, y compris ceux qui ne le sollicitent pas. Cela n'aura pas d'impact en soi sur leur exécution, mais cela charge inutilement les runners.
+
+Afin d'éviter le lancement inutile du service sur les jobs qui n'en ont pas besoin, on va pouvoir utiliser la précédence de GitLab CI : la valeur de la clé `default` est utilisée tant que sa valeur n'est pas surchargée. Ainsi, si on déclare un `service` vide dans un job, le service `postgres` ne sera pas démarré lors de l'exécution de ce dernier.
+
+Adaptez maintenant tous les jobs qui n'ont pas besoin de base de données pour éviter le lancement superflu du service `postgres`.
 
 Enfin, vous pouvez vouloir personnaliser différents paramètres des services, tout particulièrement s'il s'agit d'une image atypique ou que vous avez vous-même construite. Vous pouvez alors utiliser un dictionaire comme suit :
 ```yaml
@@ -172,16 +181,18 @@ try-database-connection:
     - echo Mot de passe PostgreSQL = ${POSTGRES_PASSWORD}
 ```
 
+Comme précisé dans les commentaires, le job `try-database-connection` n'a plus accès à la variable `${POSTGRES_PASSWORD}`, ce qui peut nous poser problème si on tente effectivement de se connecter à la base de données. Optez pour l'instant pour l'entre-deux : gardez la dernière version du service, mais remettez la variable `POSTGRES_PASSWORD` à la racine du pipeline pour que le service et tous les jobs y aient accès. Ce n'est pas l'idéal, nous verrons dans un futur TP comment faire mieux.
+
 > Comme toujours, n'hésitez pas à lire [la documentation officielle](https://docs.gitlab.com/ci/services/) sur le sujet.
 
 ### Ordonnancement des différents jobs
 
 Lors du TP 01, nous avons utilisé le template de pipeline fourni par GitLab, qui permet de faire un séquençage basique des jobs avec les stages. Mais une des grandes forces des pipelines est de pouvoir adapter leur comportement et leur déroulé en fonction de différents paramètres.
 
-Pour commencer, imaginons que nous ayons besoin, au sein d'un même stage, d'ordonner le séquençage des jobs. Le mot-clé `needs` répond à ce besoin, en listant simplement les jobs qui doivent s'être exécutés avant. Mettons en place une chaîne de dépendance pour le stage `test` :
+Pour commencer, imaginons que nous ayons besoin, au sein d'un même stage, d'ordonner le séquençage des jobs. Le mot-clé `needs` répond à ce besoin, en listant simplement les jobs qui doivent s'exécuter préalablement. Mettons en place une chaîne de dépendance pour le stage `test` :
 ```yaml
-unit-test-job:   # This job runs in the test stage.
-  stage: test    # It only starts when the job in the build stage completes successfully.
+unit-test-job:
+  stage: test
   script:
     - echo "Running unit tests... This will take about 60 seconds."
     - sleep 60
@@ -189,8 +200,8 @@ unit-test-job:   # This job runs in the test stage.
   needs:
     - lint-test-job
 
-lint-test-job:   # This job also runs in the test stage.
-  stage: test    # It can run at the same time as unit-test-job (in parallel).
+lint-test-job:
+  stage: test
   script:
     - echo "Linting code... This will take about 10 seconds."
     - sleep 10
@@ -203,7 +214,6 @@ display-php-version:
     - php -v
     - cat wordpress_salts.php
   needs:
-    - get-wordpress-salts
     - unit-test-job
 
 try-database-connection:
@@ -224,12 +234,55 @@ Cependant, vous allez constater que le job `display-php-version` du pipeline va 
 
 ### Contrôle de l'exécution ou non d'un job
 
-Maintenant, disons que l'on souhaite être averti de la réussite ou de l'échec du déploiement. Le mot-clé `when` permet de répondre à ce besoin.
+Maintenant, disons que l'on souhaite réagir à la réussite ou à l'échec d'un job précédent. Le mot-clé `when` permet de répondre à ce besoin. Pour faire simple, nous allons nous contenter d'un `echo`, mais on peut facilement imaginer envoyer un email ou une notification Mattermost, ou même nettoyer des éléments, engager un rollback ou d'autres actions plus complexes.
 
-TODO
+Les valeurs possibles de `when` qui vont nous intéresser dans un premier vont être `on_success` et `on_failure`. Voici un exemple :
+```yaml
+deploy-job:
+  stage: deploy
+  environment: production
+  script:
+    - echo "Deploying application..."
+    - echo "Application successfully deployed."
+	- exit 1
 
-> Lorsqu'il n'est pas renseigné, ce mot-clé est en réalité appliqué avec sa valeur `on_success`.
+# 'when' considère le résultat des jobs précédents, donc on doit soit se placer dans un stage ultérieur, soit utiliser 'needs'
+warn-when-deploy-failure:
+  stage: deploy
+  script:
+    - echo "Une erreur est survenue !"
+  needs:
+    - deploy-job
+  when: on_failure
+```
+
+Rajoutez un autre job pour l'éventualité `on_success`, puis jouez avec le `exit` pour constater la différence de comportement lors de l'exécution du pipeline.
+
+> Lorsqu'il n'est pas renseigné, le mot-clé `when` est en réalité appliqué avec sa valeur `on_success`.
+
+### Tolérance des erreurs
+
+On peut également imaginer que le résultat d'un job ne soit pas critique, et qu'une erreur ne nous empêche pas d'avancer. On a alors deux approches :
+- on veut continuer quelle que soit l'erreur
+- on veut continuer uniquement sur certains codes d'erreur
+
+Le mot clé `allow_failure` et sa clé enfant `exit_codes` remplissent ce besoin, en se plaçant sur le job qui va générer le code d'erreur. Dans notre premier cas (continuer quelle que soit l'erreur), on pourra juste spécifier `allow_failure: true` sur un job. Dans notre second cas, on pourra spécifier une `exit_codes` avec un ou plusieurs codes d'erreur tolérés.
+
+Ajustez le job `deploy-job` comme suit :
+```yaml
+deploy-job:
+  stage: deploy
+  environment: production
+  script:
+    - echo "Deploying application..."
+    - echo "Application successfully deployed."
+	  - exit 1
+  allow_failure:
+    exit_codes: 1
+```
+
+Lancez maintenant le pipeline et constatez que le job `warn-when-deploy-failure` n'est plus déclenché.
 
 ## Conclusion
 
-TBD
+Félicitation, vous disposez maintenant des connaissances pour concevoir des pipelines basiques : vous avez appréhendé comment utiliser différentes images Docker et services en fonction des besoins, transmettre des fichiers d'un job à l'autre et contrôler le flux d'exécution du pipeline.
