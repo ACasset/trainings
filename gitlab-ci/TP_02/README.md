@@ -94,6 +94,10 @@ display-php-version:
 
 > Dans notre cas, rien de plus n'est nécessaire car les deux jobs sont dans des stages différents. Nous allons voir plus tard comment faire au sein d'un même stage.
 
+### Utilisation de variables
+
+TODO: déplacer l'explication des variables ici
+
 ### Utilisation de services
 
 Imaginons maintenant que vous ayez une application un peu plus complexe à disposition : du PHP sollicitant une base de données PostgreSQL et un Redis. Le fait d'installer tous ces outils sur une seule image présente un problème de complexité, et de représentativité. En effet, avoir tous les services dans un seul conteneur ne reflètera pas le contexte d'exécution en production.

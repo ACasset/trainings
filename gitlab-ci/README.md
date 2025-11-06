@@ -40,6 +40,7 @@ Chaque TP est conçu pour introduire un nombre limité de concepts afin de ne pa
 - vérifier la présence de runners
 - configurer un projet pour utiliser la CI/CD
 - créer un pipeline basique
+- comprendre les mots-clés de base des pipeline
 
 ## TP 02 : Contrôler l'exécution des jobs
 

@@ -10,7 +10,19 @@ Ce TP a pour but d'introduire les concepts suivants :
 
 ## Déroulé
 
-### TBD
+### Prise en compte d'entrées utilisateur
+
+TBD
+
+### Utilisation de données sensibles
+
+TBD
+
+### Exécution d'actions antérieures et postérieures aux scripts
+
+TBD
+
+### Planification de pipelines
 
 TBD
 

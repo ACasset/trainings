@@ -6,6 +6,7 @@ Ce TP a pour but d'apprendre à :
 - vérifier la présence de runners
 - configurer un projet pour utiliser la CI/CD
 - créer un pipeline basique
+- comprendre les mots-clés de base des pipeline
 
 ## Déroulé
 
