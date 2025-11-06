@@ -96,7 +96,29 @@ display-php-version:
 
 ### Utilisation de variables
 
-TODO: déplacer l'explication des variables ici
+Vous connaissez déjà certainement les avantages de l'utilisation de variables : renseigner une seule fois une valeur et utiliser une référence pour faciliter la factorisation du code. Les pipelines offrent évidemment un mécanisme similaire.
+
+On va pouvoir déclarer deux types de variables : les variables globales (définies à la racine du pipeline) et les variables locales (spécifique à un job). Leur déclaration et leur utilisation est simple :
+```yaml
+variables:
+  VARIABLE_GLOBALE: accessible_partout
+
+get-wordpress-salts:
+  stage: build
+  image: curlimages/curl:8.13.0
+  variables:
+    FICHIER_DE_SORTIE: wordpress_salts.php
+  script:
+    - echo "<?php" > ${FICHIER_DE_SORTIE}
+    - curl --silent https://api.wordpress.org/secret-key/1.1/salt/ >> ${FICHIER_DE_SORTIE}
+    - echo "?>" >> ${FICHIER_DE_SORTIE}
+    - cat ${FICHIER_DE_SORTIE}
+  artifacts:
+    paths:
+      - ${FICHIER_DE_SORTIE}
+```
+
+Déclarez maintenant une nouvelle variable dans le job `get-wordpress-salts` qui contiendra l'URL à requêter.
 
 ### Utilisation de services
 
@@ -135,17 +157,18 @@ try-database-connection:
     - echo Mot de passe PostgreSQL = ${POSTGRES_PASSWORD}
 ```
 
-Nous avons ici placé la clé `variables` au sein du job, donc seul ce job pourra utiliser cette variable. Cela fait sens dans notre cas de figure : le service est déclaré dans le job, donc seul ce dernier y aura accès.
+Nous avons utilisé une variable locale, donc seul ce job pourra utiliser cette variable. Cela fait sens dans notre cas de figure : le service est déclaré dans le job, donc seul ce dernier y aura accès.
 
 > Les services sont réinitialisés pour chaque job : il n'est ainsi pas possible d'avoir un premier job qui initialise un service, et un autre qui va simplement l'utiliser. 
 
-Si on imagine que plusieurs jobs vont utiliser le même service, ou les mêmes variables, on peut déplacer les mots-clés correspondants dans la clé `default` à la racine du fichier `.gitlab-ci.yml` comme suit :
+Si on imagine que plusieurs jobs vont utiliser le même service, on peut déplacer sa déclaration dans la clé `default` à la racine du fichier `.gitlab-ci.yml` comme suit :
 ```yaml
 default:
   services:
     - postgres:16.8-alpine3.20
 
 variables:
+  # Le service étant utilisé par plusieurs jobs, il fait sens de transformer 'POSTGRES_PASSWORD' en variable globale
   POSTGRES_PASSWORD: "V3ryS3cur3P@ssw0rd!"
 
 try-database-connection:
@@ -181,11 +204,11 @@ try-database-connection:
   script:
     # Comme on a spécifié un alias, on peut maintenant joindre le service en l'utilisant
     - ping -c 4 db
-    # Les variables étant maintenant spécifiées dans le service, on y a plus accès au sein du job même et le retour de la variable sera vide
+    # La variable 'POSTGRES_PASSWORD' étant maintenant spécifiée dans le service, elle n'est plus globale, on y a plus accès au sein du job même et le retour de la variable sera vide
     - echo Mot de passe PostgreSQL = ${POSTGRES_PASSWORD}
 ```
 
-Comme précisé dans les commentaires, le job `try-database-connection` n'a plus accès à la variable `${POSTGRES_PASSWORD}`, ce qui peut nous poser problème si on tente effectivement de se connecter à la base de données. Optez pour l'instant pour l'entre-deux : gardez la dernière version du service, mais remettez la variable `POSTGRES_PASSWORD` à la racine du pipeline pour que le service et tous les jobs y aient accès. Ce n'est pas l'idéal, nous verrons dans un futur TP comment faire mieux.
+Comme précisé dans les commentaires, le job `try-database-connection` n'a plus accès à la variable `${POSTGRES_PASSWORD}`, ce qui peut nous poser problème si on tente effectivement de se connecter à la base de données. Optez pour l'instant pour l'entre-deux : gardez la dernière version du service (avec notamment l'alias), mais retransformez `POSTGRES_PASSWORD` en variable globale pour que le service et tous les jobs y aient accès. Ce n'est pas l'idéal, nous verrons dans un futur TP comment faire mieux.
 
 > Comme toujours, n'hésitez pas à lire [la documentation officielle](https://docs.gitlab.com/ci/services/) sur le sujet.
 

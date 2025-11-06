@@ -4,6 +4,7 @@ stages:
   - deploy
 
 variables:
+  VARIABLE_GLOBALE: accessible_partout
   POSTGRES_PASSWORD: "V3ryS3cur3P@ssw0rd!"
 
 default:
@@ -23,15 +24,17 @@ build-job:
 get-wordpress-salts:
   stage: build
   image: curlimages/curl:8.13.0
-  services:
+  variables:
+    URL_API_WORDPRESS: https://api.wordpress.org/secret-key/1.1/salt/
+    FICHIER_DE_SORTIE: wordpress_salts.php
   script:
-    - echo "<?php" > wordpress_salts.php
-    - curl --silent https://api.wordpress.org/secret-key/1.1/salt/ >> wordpress_salts.php
-    - echo "?>" >> wordpress_salts.php
-    - cat wordpress_salts.php
+    - echo "<?php" > ${FICHIER_DE_SORTIE}
+    - curl --silent ${URL_API_WORDPRESS} >> ${FICHIER_DE_SORTIE}
+    - echo "?>" >> ${FICHIER_DE_SORTIE}
+    - cat ${FICHIER_DE_SORTIE}
   artifacts:
     paths:
-      - wordpress_salts.php
+      - ${FICHIER_DE_SORTIE}
 
 unit-test-job:
   stage: test
