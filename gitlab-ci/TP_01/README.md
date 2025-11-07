@@ -42,7 +42,7 @@ Cliquez sur le `#1` pour afficher la vue du pipeline : vous allez ainsi pouvoir 
 
 Vous pouvez cliquer sur un job pour voir les logs qui lui sont propres, et éventuellement chercher une information spécifique, par curiosité ou afin de debug un pipeline en échec.
 
-Le template ne faisant rien de concret (uniquement des `echo` et des `sleep`), celui-ci va s'exécuter jusqu'au bout sans erreurs.
+Le template ne faisant rien de concret (uniquement des `echo` et des `sleep`), celui-ci va s'exécuter jusqu'au bout sans erreurs. Vous le constaterez plus tard, par défaut, si un job rencontre une erreur, le pipeline s'arrête.
 
 ### Explication du pipeline
 

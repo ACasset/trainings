@@ -2,6 +2,7 @@ stages:
   - build
   - test
   - deploy
+  - report
 
 variables:
   VARIABLE_GLOBALE: accessible_partout
@@ -16,7 +17,7 @@ default:
 
 build-job:
   stage: build
-  services:
+  services: []
   script:
     - echo "Compiling the code..."
     - echo "Compile complete."
@@ -24,6 +25,7 @@ build-job:
 get-wordpress-salts:
   stage: build
   image: curlimages/curl:8.13.0
+  services: []
   variables:
     URL_API_WORDPRESS: https://api.wordpress.org/secret-key/1.1/salt/
     FICHIER_DE_SORTIE: wordpress_salts.php
@@ -38,7 +40,7 @@ get-wordpress-salts:
 
 unit-test-job:
   stage: test
-  services:
+  services: []
   script:
     - echo "Running unit tests... This will take about 60 seconds."
     - sleep 60
@@ -48,7 +50,7 @@ unit-test-job:
 
 lint-test-job:
   stage: test
-  services:
+  services: []
   script:
     - echo "Linting code... This will take about 10 seconds."
     - sleep 10
@@ -57,12 +59,12 @@ lint-test-job:
 display-php-version:
   stage: test
   image: php:8.4.6-zts-alpine
-  services:
+  services: []
   script:
     - php -v
     - cat wordpress_salts.php
   needs:
-    - lint-test-job
+    - unit-test-job
     - get-wordpress-salts
 
 try-database-connection:
@@ -77,7 +79,7 @@ try-database-connection:
 deploy-job:
   stage: deploy
   environment: production
-  services:
+  services: []
   script:
     - echo "Deploying application..."
     - echo "Application successfully deployed."
@@ -86,19 +88,15 @@ deploy-job:
     exit_codes: 1
 
 warn-when-deploy-failure:
-  stage: deploy
-  services:
+  stage: report
+  services: []
   script:
     - echo "Une erreur inattendue (exit code != [0,1]) est survenue !"
-  needs:
-    - deploy-job
   when: on_failure
 
 warn-when-deploy-success:
-  stage: deploy
-  services:
+  stage: report
+  services: []
   script:
     - echo "Le déploiement s'est déroulé comme attendu !"
-  needs:
-    - deploy-job
   when: on_success

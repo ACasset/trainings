@@ -118,7 +118,7 @@ get-wordpress-salts:
       - ${FICHIER_DE_SORTIE}
 ```
 
-Déclarez maintenant une nouvelle variable dans le job `get-wordpress-salts` qui contiendra l'URL à requêter.
+Déclarez maintenant et utilisez une nouvelle variable dans le job `get-wordpress-salts` qui contiendra l'URL à requêter.
 
 ### Utilisation de services
 
@@ -184,19 +184,22 @@ try-database-connection:
 
 Afin d'éviter le lancement inutile du service sur les jobs qui n'en ont pas besoin, on va pouvoir utiliser la précédence de GitLab CI : la valeur de la clé `default` est utilisée tant que sa valeur n'est pas surchargée. Ainsi, si on déclare un `service` vide dans un job, le service `postgres` ne sera pas démarré lors de l'exécution de ce dernier.
 
-Adaptez maintenant tous les jobs qui n'ont pas besoin de base de données pour éviter le lancement superflu du service `postgres`.
+> Si vous déclarez simplement une clé `services` vide dans les jobs, cela ne fonctionnera pas comme prévu : c'est incorrect d'un point de vue YAML (et l'éditeur de pipeline devrait vous le signaler). Pour obtenir le résultat attendu, vous devez dans ce cas déclarer un tableau vide (`services: []`). Dans d'autres cas, il faudra déclarer un dictionnaire vide (`{}`) : l'interface de l'éditeur de pipeline et la documentation seront vos meilleurs alliés dans ce cas.
+
+Adaptez maintenant tous les jobs qui n'ont pas besoin de base de données pour éviter le lancement superflu du service `postgres`. Vous devriez constater une légère amélioration du temps d'exécution de votre pipeline (de 10% à 15% environ).
 
 Enfin, vous pouvez vouloir personnaliser différents paramètres des services, tout particulièrement s'il s'agit d'une image atypique ou que vous avez vous-même construite. Vous pouvez alors utiliser un dictionaire comme suit :
 ```yaml
-services:
-  - name: postgres:16.8-alpine3.20
-    alias: db
-    # On conserve l'entrypoint de l'image
-    entrypoint: ["docker-entrypoint.sh"]
-    # Ainsi que sa commande
-    command: ["postgres"]
-    variables:
-      POSTGRES_PASSWORD: "V3ryS3cur3P@ssw0rd!"
+default:
+  services:
+    - name: postgres:16.8-alpine3.20
+      alias: db
+      # On conserve l'entrypoint de l'image
+      entrypoint: ["docker-entrypoint.sh"]
+      # Ainsi que sa commande
+      command: ["postgres"]
+      variables:
+        POSTGRES_PASSWORD: "V3ryS3cur3P@ssw0rd!"
 
 try-database-connection:
   stage: test
@@ -259,11 +262,13 @@ Si vous vous rendez dans la vue du pipeline, vous verrez un nouvel entête `Grou
 
 Cependant, vous allez constater que le job `display-php-version` du pipeline va échouer, car il ne trouve plus le fichier `wordpress_salts.php`. En effet, le fait de renseigner le mot-clé `needs` entraîne la conséquence que le job ne télécharge plus tous les artifacts des stages précédents par défaut. Corrigez donc les `needs` pour que l'artifact soit à nouveau disponible dans le job `display-php-version`.
 
+> Notez aussi que l'échec du job `display-php-version` a interrompu l'exécution du pipeline, et que les jobs suivants sont à l'état `skipped`. C'est le comportement par défaut, mais nous allons maintenant voir comment passer outre.
+
 ### Contrôle de l'exécution ou non d'un job
 
 Maintenant, disons que l'on souhaite réagir à la réussite ou à l'échec d'un job précédent. Le mot-clé `when` permet de répondre à ce besoin. Pour faire simple, nous allons nous contenter d'un `echo`, mais on peut facilement imaginer envoyer un email ou une notification Mattermost, ou même nettoyer des éléments, engager un rollback ou d'autres actions plus complexes.
 
-Les valeurs possibles de `when` qui vont nous intéresser dans un premier vont être `on_success` et `on_failure`. Voici un exemple :
+Les valeurs possibles de `when` qui vont nous intéresser dans un premier vont être `on_success` et `on_failure`. Complétez le stage `deploy` comme suit :
 ```yaml
 deploy-job:
   stage: deploy
@@ -271,19 +276,16 @@ deploy-job:
   script:
     - echo "Deploying application..."
     - echo "Application successfully deployed."
-	- exit 1
+    - exit 1
 
-# 'when' considère le résultat des jobs précédents, donc on doit soit se placer dans un stage ultérieur, soit utiliser 'needs'
 warn-when-deploy-failure:
   stage: deploy
   script:
     - echo "Une erreur est survenue !"
-  needs:
-    - deploy-job
   when: on_failure
 ```
 
-Rajoutez un autre job pour l'éventualité `on_success`, puis jouez avec le `exit` pour constater la différence de comportement lors de l'exécution du pipeline.
+Vous allez constater une erreur (attendue) sur le job `deploy-job`, mais le job `warn-when-deploy-failure` est à l'état `skipped`. Dans notre contexte, c'est parfaitement normal : 'when' considère le résultat des jobs précédents, donc on doit soit se placer dans un `stage` postérieur, soit utiliser `needs` pour créer une chaîne de dépendance. Vous savez déjà utiliser `needs`, donc optons pour l'autre solution : rajoutez un stage `report` dans la clé `stages` à la racine du pipeline, assignez-y le job `warn-when-deploy-failure`, ajoutez ensuite un autre job pour l'éventualité `on_success`, puis jouez avec le `exit` pour constater la différence de comportement lors de l'exécution du pipeline.
 
 > Lorsqu'il n'est pas renseigné, le mot-clé `when` est en réalité appliqué avec sa valeur `on_success`.
 
@@ -308,7 +310,7 @@ deploy-job:
     exit_codes: 1
 ```
 
-Lancez maintenant le pipeline et constatez que le job `warn-when-deploy-failure` n'est plus déclenché.
+Lancez maintenant le pipeline et constatez que 1° le job `deploy-job` est maintenant au statut `warning` et 2° le job `warn-when-deploy-failure` n'est plus déclenché.
 
 ## Conclusion
 
