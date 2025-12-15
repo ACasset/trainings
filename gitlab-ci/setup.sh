@@ -119,13 +119,13 @@ ROOT_PASSWORD=$(docker exec -it gitlab grep 'Password:' /etc/gitlab/initial_root
 
 # Check if the GitLab hostname is resolved
 # TODO: check for errors ("./setup.sh: line 121: getent: command not found")
-if ! getent hosts gitlab > /dev/null; then
-  echo -e "${YELLOW}GitLab hostname not resolved. Adding entry to /etc/hosts...${NC}"
-  echo -e "\n\n# [devops-training] Entry to resolve the local GitLab instance\n127.0.0.1 gitlab" | sudo tee -a /etc/hosts > /dev/null
-  echo -e "${GREEN}Entry added to /etc/hosts successfully!${NC}"
-else
-  echo -e "${GREEN}GitLab hostname is already resolved.${NC}"
-fi
+# if ! getent hosts gitlab > /dev/null; then
+#   echo -e "${YELLOW}GitLab hostname not resolved. Adding entry to /etc/hosts...${NC}"
+#   echo -e "\n\n# [devops-training] Entry to resolve the local GitLab instance\n127.0.0.1 gitlab" | sudo tee -a /etc/hosts > /dev/null
+#   echo -e "${GREEN}Entry added to /etc/hosts successfully!${NC}"
+# else
+#   echo -e "${GREEN}GitLab hostname is already resolved.${NC}"
+# fi
 
 echo -e "${GREEN}GitLab setup completed successfully!${NC}"
 echo -e "${YELLOW}You can access GitLab at http://gitlab${NC}"
