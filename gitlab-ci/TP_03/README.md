@@ -81,10 +81,9 @@ On peut alors maîtriser ce risque en utilisant `type` et/ou `regex` dans la dé
 spec:
   inputs:
     version:
-      type: number
-      regex: 
+      type: string
+      regex: ^\w+$
       options: ['build', 'test', 'deploy']
-string (default when not specified), array, number, or boolean
 ```
 
 > Les valeurs possibles de `type` sont : `string` (valeur par défaut), `array`, `number` et `boolean`.
