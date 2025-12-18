@@ -12,11 +12,22 @@ stages:
   - test
   - deploy
 
+# Configuration par défaut avec before_script et after_script
+default:
+  before_script:
+    - echo "=== Début du job à $(date) ==="
+    - echo "Branche: ${CI_COMMIT_REF_NAME}"
+    - echo "Commit: ${CI_COMMIT_SHORT_SHA}"
+  after_script:
+    - echo "=== Fin du job à $(date) ==="
+
 build-job:
   stage: build
   script:
     - echo "Premier input: $[[ inputs.premier-input ]]"
     - echo "Second input: $[[ inputs.second-input ]]"
+    # Utilisation d'une variable CI/CD (définie dans Settings > CI/CD > Variables)
+    - echo "Valeur du secret (si défini): ${MON_SECRET:-non défini}"
 
 unit-test-job:
   stage: test
@@ -38,3 +49,12 @@ deploy-job:
   script:
     - echo "Deploying application..."
     - echo "Application successfully deployed."
+
+# Job qui ne s'exécute que lors des pipelines planifiés
+scheduled-task:
+  stage: build
+  script:
+    - echo "Ce job ne s'exécute que lors des pipelines planifiés"
+    - echo "Exécuté à $(date)"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"

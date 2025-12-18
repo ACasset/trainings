@@ -1,15 +1,192 @@
-# Ceci est un fichier de configuration GitLab CI basique
-# Il définit un pipeline qui exécute un simple job "hello_world"
+# Pipeline de synthèse - Application web (frontend + backend)
+# Ce pipeline illustre l'ensemble des concepts vus dans la formation GitLab CI
 
-# Définition des étapes du pipeline
+# Variables globales
+variables:
+  APP_VERSION: "1.0.0"
+  DEV_URL: "https://dev.myapp.example.com"
+  STAGING_URL: "https://staging.myapp.example.com"
+  PROD_URL: "https://www.myapp.example.com"
+  POSTGRES_PASSWORD: "test_password"
+  POSTGRES_USER: "test_user"
+  POSTGRES_DB: "test_db"
+
+# Configuration par défaut
+default:
+  before_script:
+    - echo "=== Job démarré à $(date) ==="
+    - echo "Branche: ${CI_COMMIT_REF_NAME}"
+    - echo "Commit: ${CI_COMMIT_SHORT_SHA}"
+    - echo "Version de l'application: ${APP_VERSION}"
+
+# Définition des stages
 stages:
-  - greeting
+  - lint
+  - test
+  - build
+  - integration
+  - deploy
+  - notify
 
-# Job "hello_world" qui s'exécute dans l'étape "greeting"
-hello_world:
-  stage: greeting
-  # Utilisation d'une image Docker légère basée sur Alpine Linux
+# Templates réutilisables
+.deploy-template:
   image: alpine:latest
   script:
-    - echo "Hello World from GitLab CI!"
-    - echo "Pipeline exécuté le $(date)"
+    - echo "Déploiement sur ${ENV_NAME}..."
+    - echo "URL: ${ENV_URL}"
+    - echo "Déploiement de la version ${APP_VERSION} terminé !"
+
+# ============== Jobs de lint ==============
+
+lint-frontend:
+  stage: lint
+  image: node:20-alpine
+  script:
+    - echo "Lint du frontend..."
+    - echo "npm run lint (simulé)"
+    - echo "Aucune erreur de lint détectée"
+
+lint-backend:
+  stage: lint
+  image: python:3.11-alpine
+  script:
+    - echo "Lint du backend..."
+    - echo "python -m pylint (simulé)"
+    - echo "Score: 9.5/10"
+
+# ============== Jobs de test ==============
+
+test-backend:
+  stage: test
+  image: python:3.11-alpine
+  script:
+    - echo "Exécution des tests unitaires..."
+    - echo "pytest (simulé)"
+    - echo "42 tests passed, 0 failed"
+    - echo "Coverage: 85%"
+  needs:
+    - lint-backend
+
+# ============== Jobs de build ==============
+
+build-frontend:
+  stage: build
+  image: node:20-alpine
+  script:
+    - echo "Construction du frontend..."
+    - echo "npm run build (simulé)"
+    - echo "Frontend build v${APP_VERSION}" > frontend-build.txt
+    - echo "Build du frontend terminé"
+  artifacts:
+    paths:
+      - frontend-build.txt
+    expire_in: 1 week
+  needs:
+    - lint-frontend
+  allow_failure:
+    exit_codes: 42
+
+build-backend:
+  stage: build
+  image: python:3.11-alpine
+  script:
+    - echo "Construction du backend..."
+    - echo "python setup.py build (simulé)"
+    - echo "Backend build v${APP_VERSION}" > backend-build.txt
+    - echo "Build du backend terminé"
+  artifacts:
+    paths:
+      - backend-build.txt
+    expire_in: 1 week
+  needs:
+    - test-backend
+
+# ============== Job d'intégration ==============
+
+integration-tests:
+  stage: integration
+  image: python:3.11-alpine
+  services:
+    - name: postgres:16-alpine
+      alias: db
+  script:
+    - echo "Vérification des artifacts..."
+    - cat frontend-build.txt
+    - cat backend-build.txt
+    - echo "Attente du démarrage de PostgreSQL..."
+    - sleep 5
+    - echo "Tests d'intégration en cours..."
+    - echo "Test de connexion frontend -> backend: OK"
+    - echo "Test de connexion backend -> database: OK"
+    - echo "Tous les tests d'intégration passent !"
+  needs:
+    - build-frontend
+    - build-backend
+
+# ============== Jobs de déploiement ==============
+
+deploy-dev:
+  stage: deploy
+  extends: .deploy-template
+  variables:
+    ENV_NAME: "development"
+    ENV_URL: "${DEV_URL}"
+  environment:
+    name: development
+    url: ${DEV_URL}
+  needs:
+    - integration-tests
+
+deploy-staging:
+  stage: deploy
+  extends: .deploy-template
+  variables:
+    ENV_NAME: "staging"
+    ENV_URL: "${STAGING_URL}"
+  environment:
+    name: staging
+    url: ${STAGING_URL}
+  when: manual
+  needs:
+    - integration-tests
+
+deploy-prod:
+  stage: deploy
+  extends: .deploy-template
+  variables:
+    ENV_NAME: "production"
+    ENV_URL: "${PROD_URL}"
+  environment:
+    name: production
+    url: ${PROD_URL}
+  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  needs:
+    - integration-tests
+
+# ============== Jobs de notification ==============
+
+notify-success:
+  stage: notify
+  image: alpine:latest
+  script:
+    - echo "✅ Pipeline exécuté avec succès !"
+    - echo "Version déployée: ${APP_VERSION}"
+    - echo "Branche: ${CI_COMMIT_REF_NAME}"
+    - echo "Commit: ${CI_COMMIT_SHORT_SHA}"
+    - echo "Notification envoyée à l'équipe (simulé)"
+  when: on_success
+  needs:
+    - deploy-dev
+
+notify-failure:
+  stage: notify
+  image: alpine:latest
+  script:
+    - echo "❌ Le pipeline a échoué !"
+    - echo "Branche: ${CI_COMMIT_REF_NAME}"
+    - echo "Commit: ${CI_COMMIT_SHORT_SHA}"
+    - echo "Veuillez vérifier les logs des jobs en échec"
+    - echo "Notification d'échec envoyée à l'équipe (simulé)"
+  when: on_failure

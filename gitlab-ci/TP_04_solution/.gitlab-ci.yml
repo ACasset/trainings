@@ -1,15 +1,80 @@
-# Ceci est un fichier de configuration GitLab CI basique
-# Il définit un pipeline qui exécute un simple job "hello_world"
+# Exemple de pipeline utilisant les includes, extends, environments et triggers
+# Note: Ce fichier suppose l'existence d'un projet 'root/ci-templates' avec le template approprié
+
+# Include d'un template depuis un autre projet (à créer préalablement)
+# include:
+#   - project: 'root/ci-templates'
+#     ref: 'main'
+#     file: '/templates/hello.yml'
 
 # Définition des étapes du pipeline
 stages:
-  - greeting
+  - build
+  - deploy
+  - trigger
 
-# Job "hello_world" qui s'exécute dans l'étape "greeting"
-hello_world:
-  stage: greeting
-  # Utilisation d'une image Docker légère basée sur Alpine Linux
+# Template réutilisable pour les déploiements
+.deploy-template:
+  image: alpine:latest
+  before_script:
+    - echo "Préparation du déploiement..."
+  script:
+    - echo "Déploiement sur l'environnement ${ENV_NAME}..."
+    - echo "URL de l'environnement: ${ENV_URL}"
+    - echo "Déploiement terminé !"
+
+# Job de build
+build:
+  stage: build
   image: alpine:latest
   script:
-    - echo "Hello World from GitLab CI!"
-    - echo "Pipeline exécuté le $(date)"
+    - echo "Construction de l'application..."
+    - echo "Version: 1.0.0"
+    - echo "Build terminé"
+
+# Déploiement en développement (automatique)
+deploy-dev:
+  stage: deploy
+  extends: .deploy-template
+  variables:
+    ENV_NAME: "development"
+    ENV_URL: "https://dev.example.com"
+  environment:
+    name: development
+    url: https://dev.example.com
+
+# Déploiement en staging (manuel)
+deploy-staging:
+  stage: deploy
+  extends: .deploy-template
+  variables:
+    ENV_NAME: "staging"
+    ENV_URL: "https://staging.example.com"
+  environment:
+    name: staging
+    url: https://staging.example.com
+  when: manual
+
+# Déploiement en production (manuel, uniquement sur main)
+deploy-prod:
+  stage: deploy
+  extends: .deploy-template
+  variables:
+    ENV_NAME: "production"
+    ENV_URL: "https://www.example.com"
+  environment:
+    name: production
+    url: https://www.example.com
+  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# Déclenchement d'un pipeline downstream (à adapter avec un vrai projet)
+# trigger-downstream:
+#   stage: trigger
+#   trigger:
+#     project: root/projet-downstream
+#     branch: main
+#     strategy: depend
+#   variables:
+#     VERSION: "1.0.0"
