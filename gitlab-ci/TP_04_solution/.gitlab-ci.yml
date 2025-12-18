@@ -1,7 +1,10 @@
 # Exemple de pipeline utilisant les includes, extends, environments et triggers
 # Note: Ce fichier suppose l'existence d'un projet 'root/ci-templates' avec le template approprié
 
-# Include d'un template depuis un autre projet (à créer préalablement)
+# Include d'un template depuis un autre projet
+# Note: Cette section est commentée car elle nécessite la création préalable
+# du projet 'root/ci-templates' avec le fichier templates/hello.yml
+# Suivez les instructions du TP_04/README.md pour créer ce projet
 # include:
 #   - project: 'root/ci-templates'
 #     ref: 'main'
@@ -69,7 +72,10 @@ deploy-prod:
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
 
-# Déclenchement d'un pipeline downstream (à adapter avec un vrai projet)
+# Déclenchement d'un pipeline downstream
+# Note: Cette section est commentée car elle nécessite la création préalable
+# du projet 'root/projet-downstream' avec son propre fichier .gitlab-ci.yml
+# Suivez les instructions du TP_04/README.md pour créer ce projet
 # trigger-downstream:
 #   stage: trigger
 #   trigger:

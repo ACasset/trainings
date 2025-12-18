@@ -2,11 +2,15 @@
 # Ce pipeline illustre l'ensemble des concepts vus dans la formation GitLab CI
 
 # Variables globales
+# Note: Les credentials de base de données ci-dessous sont des valeurs de test
+# pour l'exercice. En production, utilisez des variables CI/CD masquées
+# (Settings > CI/CD > Variables) comme expliqué dans le TP_03.
 variables:
   APP_VERSION: "1.0.0"
   DEV_URL: "https://dev.myapp.example.com"
   STAGING_URL: "https://staging.myapp.example.com"
   PROD_URL: "https://www.myapp.example.com"
+  # Ces variables devraient être définies comme variables CI/CD masquées en production
   POSTGRES_PASSWORD: "test_password"
   POSTGRES_USER: "test_user"
   POSTGRES_DB: "test_db"
@@ -167,6 +171,9 @@ deploy-prod:
 
 # ============== Jobs de notification ==============
 
+# Note: Ce job ne dépend que de deploy-dev car c'est le seul déploiement automatique.
+# Les déploiements staging et prod sont manuels et peuvent ne pas s'exécuter.
+# Pour une notification plus complète, on pourrait utiliser des rules plus avancées.
 notify-success:
   stage: notify
   image: alpine:latest
