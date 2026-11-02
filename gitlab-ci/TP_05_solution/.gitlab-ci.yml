@@ -1,0 +1,15 @@
+# Ceci est un fichier de configuration GitLab CI basique
+# Il définit un pipeline qui exécute un simple job "hello_world"
+
+# Définition des étapes du pipeline
+stages:
+  - greeting
+
+# Job "hello_world" qui s'exécute dans l'étape "greeting"
+hello_world:
+  stage: greeting
+  # Utilisation d'une image Docker légère basée sur Alpine Linux
+  image: alpine:latest
+  script:
+    - echo "Hello World from GitLab CI!"
+    - echo "Pipeline exécuté le $(date)"
